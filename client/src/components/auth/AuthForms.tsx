@@ -8,6 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Form,
   FormControl,
   FormField,
@@ -154,11 +161,15 @@ export default function AuthForms() {
                   <FormField
                     control={registerForm.control}
                     name="companyName"
-                    render={({ field }) => (
+                    render={({ field: { value, ...fieldProps } }) => (
                       <FormItem>
                         <FormLabel>Organization/Company Name (Optional)</FormLabel>
                         <FormControl>
-                          <Input placeholder="Acme University" {...field} />
+                          <Input 
+                            placeholder="Acme University" 
+                            {...fieldProps} 
+                            value={value ?? ''} 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -167,12 +178,38 @@ export default function AuthForms() {
                   
                   <FormField
                     control={registerForm.control}
-                    name="introduction"
+                    name="role"
                     render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Role</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select role" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="creator">Creator</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={registerForm.control}
+                    name="introduction"
+                    render={({ field: { value, ...fieldProps } }) => (
                       <FormItem>
                         <FormLabel>Brief Introduction (Optional)</FormLabel>
                         <FormControl>
-                          <Input placeholder="Architecture professor with 10 years experience" {...field} />
+                          <Input 
+                            placeholder="Architecture professor with 10 years experience" 
+                            {...fieldProps} 
+                            value={value ?? ''} 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
