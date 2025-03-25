@@ -241,15 +241,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(404).json({ error: "Question bank not found" });
     }
     
-    // If user not authenticated and bank is draft, don't show
-    if (questionBank.status === 'draft' && !req.isAuthenticated()) {
-      return res.status(404).json({ error: "Question bank not found" });
+    // If user not authenticated, only show published banks
+    if (!req.isAuthenticated()) {
+      if (questionBank.status !== 'published') {
+        return res.status(404).json({ error: "Question bank not found" });
+      }
     }
     
-    // If user is authenticated but not the creator or admin, don't show draft banks
-    if (questionBank.status === 'draft' && req.user && 
-        req.user.id !== questionBank.creatorId && req.user.role !== 'admin') {
-      return res.status(404).json({ error: "Question bank not found" });
+    // If user is authenticated but not the creator or admin
+    if (req.user && req.user.id !== questionBank.creatorId && req.user.role !== 'admin') {
+      // Only show published banks to regular users
+      if (questionBank.status !== 'published') {
+        return res.status(404).json({ error: "Question bank not found" });
+      }
     }
     
     const questions = await storage.getQuestions(bankId);

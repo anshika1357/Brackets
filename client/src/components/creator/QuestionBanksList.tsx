@@ -102,8 +102,16 @@ export default function QuestionBanksList() {
     return matchesSearch && matchesSubject && matchesStatus;
   });
   
-  const handlePublish = (id: number, status: 'published' | 'draft' = 'published') => {
-    // Make an API call to publish/unpublish the question bank
+  const handlePublish = (id: number, status: 'published' | 'draft' | 'pending_approval' = 'pending_approval') => {
+    // Get appropriate message based on the action
+    const actionMessage = 
+      status === 'pending_approval' 
+        ? 'submitted for approval'
+        : status === 'published' 
+          ? 'published' 
+          : status === 'draft' && 'returned to draft';
+    
+    // Make an API call to update the question bank status
     fetch(`/api/question-banks/${id}`, {
       method: 'PUT',
       headers: {
@@ -114,16 +122,31 @@ export default function QuestionBanksList() {
     })
     .then(response => {
       if (!response.ok) {
-        throw new Error(`Failed to ${status === 'published' ? 'publish' : 'unpublish'} question bank`);
+        throw new Error(`Failed to update question bank status`);
       }
       return response.json();
     })
-    .then(() => {
+    .then((updatedBank) => {
       // Refresh the question banks list
       queryClient.invalidateQueries({ queryKey: ["/api/creator/question-banks"] });
+      
+      // Show appropriate success message based on the updated status
+      let successMessage = '';
+      
+      // The backend might change the requested status for non-admin users
+      if (updatedBank.status === 'pending_approval' && status === 'pending_approval') {
+        successMessage = 'Question bank submitted for approval';
+      } else if (updatedBank.status === 'draft' && status === 'draft') {
+        successMessage = 'Question bank returned to draft';
+      } else if (updatedBank.status === 'published') {
+        successMessage = 'Question bank published successfully';
+      } else {
+        successMessage = `Question bank ${actionMessage}`;
+      }
+      
       toast({
         title: "Success",
-        description: `Question bank ${status === 'published' ? 'published' : 'unpublished'} successfully`,
+        description: successMessage,
       });
     })
     .catch(error => {
@@ -205,6 +228,7 @@ export default function QuestionBanksList() {
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="published">Published</SelectItem>
+                <SelectItem value="pending_approval">Pending Approval</SelectItem>
                 <SelectItem value="draft">Draft</SelectItem>
               </SelectContent>
             </Select>
@@ -225,15 +249,28 @@ export default function QuestionBanksList() {
               className={`p-4 border-l-4 ${
                 bank.status === 'published' 
                   ? 'border-l-green-500' 
-                  : 'border-l-amber-500'
+                  : bank.status === 'pending_approval'
+                    ? 'border-l-blue-500'
+                    : 'border-l-amber-500'
               }`}
             >
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <div className="flex items-center space-x-2 mb-1">
                     <h3 className="font-semibold">{bank.title}</h3>
-                    <Badge variant={bank.status === 'published' ? 'secondary' : 'outline'}>
-                      {bank.status === 'published' ? 'Published' : 'Draft'}
+                    <Badge variant={
+                      bank.status === 'published' 
+                        ? 'secondary' 
+                        : bank.status === 'pending_approval'
+                          ? 'default'
+                          : 'outline'
+                    }>
+                      {bank.status === 'published' 
+                        ? 'Published' 
+                        : bank.status === 'pending_approval'
+                          ? 'Pending Approval'
+                          : 'Draft'
+                      }
                     </Badge>
                   </div>
                   <div className="flex items-center text-sm text-neutral-500 space-x-4">
@@ -257,7 +294,13 @@ export default function QuestionBanksList() {
                   
                   {bank.status === 'draft' && (
                     <Button size="sm" onClick={() => handlePublish(bank.id)}>
-                      Publish
+                      Submit for Approval
+                    </Button>
+                  )}
+                  
+                  {bank.status === 'pending_approval' && (
+                    <Button size="sm" variant="outline" disabled>
+                      Awaiting Approval
                     </Button>
                   )}
                   
@@ -274,6 +317,11 @@ export default function QuestionBanksList() {
                       {bank.status === 'published' && (
                         <DropdownMenuItem onClick={() => handlePublish(bank.id, 'draft')}>
                           Unpublish
+                        </DropdownMenuItem>
+                      )}
+                      {bank.status === 'pending_approval' && (
+                        <DropdownMenuItem onClick={() => handlePublish(bank.id, 'draft')}>
+                          Cancel Approval Request
                         </DropdownMenuItem>
                       )}
                     </DropdownMenuContent>
