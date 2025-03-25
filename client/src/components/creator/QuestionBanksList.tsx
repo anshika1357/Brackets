@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { QuestionBank } from "@shared/schema";
@@ -21,16 +21,51 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { queryClient } from "@/lib/queryClient";
 
 export default function QuestionBanksList() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [questionCounts, setQuestionCounts] = useState<{[key: number]: number}>({});
   
   const { data: questionBanks, isLoading, error } = useQuery<QuestionBank[]>({
     queryKey: ["/api/creator/question-banks"],
   });
+
+  // Fetch question counts for each bank
+  useEffect(() => {
+    if (questionBanks && questionBanks.length > 0) {
+      const fetchQuestions = async (bankId: number) => {
+        try {
+          const response = await fetch(`/api/question-banks/${bankId}/questions`, {
+            credentials: 'include'
+          });
+          if (!response.ok) return [];
+          const questions = await response.json();
+          return { bankId, count: questions.length };
+        } catch (error) {
+          console.error(`Error fetching questions for bank ${bankId}:`, error);
+          return { bankId, count: 0 };
+        }
+      };
+
+      // Create promises for all question banks
+      const promises = questionBanks.map(bank => fetchQuestions(bank.id));
+      
+      // Execute all promises and update the counts
+      Promise.all(promises).then(results => {
+        const counts: {[key: number]: number} = {};
+        results.forEach(result => {
+          if (result && typeof result === 'object' && 'bankId' in result) {
+            counts[result.bankId] = result.count;
+          }
+        });
+        setQuestionCounts(counts);
+      });
+    }
+  }, [questionBanks]);
   
   if (isLoading) {
     return <div className="text-center py-6">Loading question banks...</div>;
@@ -67,20 +102,64 @@ export default function QuestionBanksList() {
     return matchesSearch && matchesSubject && matchesStatus;
   });
   
-  const handlePublish = (id: number) => {
-    // This would make an API call to publish the question bank
-    toast({
-      title: "Success",
-      description: "Question bank published successfully",
+  const handlePublish = (id: number, status: 'published' | 'draft' = 'published') => {
+    // Make an API call to publish/unpublish the question bank
+    fetch(`/api/question-banks/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ status }),
+      credentials: 'include'
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`Failed to ${status === 'published' ? 'publish' : 'unpublish'} question bank`);
+      }
+      return response.json();
+    })
+    .then(() => {
+      // Refresh the question banks list
+      queryClient.invalidateQueries({ queryKey: ["/api/creator/question-banks"] });
+      toast({
+        title: "Success",
+        description: `Question bank ${status === 'published' ? 'published' : 'unpublished'} successfully`,
+      });
+    })
+    .catch(error => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     });
   };
   
   const handleDelete = (id: number) => {
-    // This would make an API call to delete the question bank
-    toast({
-      title: "Success",
-      description: "Question bank deleted successfully",
-    });
+    if (confirm('Are you sure you want to delete this question bank? This action cannot be undone.')) {
+      fetch(`/api/question-banks/${id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to delete question bank');
+        }
+        // Refresh the question banks list
+        queryClient.invalidateQueries({ queryKey: ["/api/creator/question-banks"] });
+        toast({
+          title: "Success",
+          description: "Question bank deleted successfully",
+        });
+      })
+      .catch(error => {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      });
+    }
   };
   
   return (
@@ -160,8 +239,7 @@ export default function QuestionBanksList() {
                   <div className="flex items-center text-sm text-neutral-500 space-x-4">
                     <span className="flex items-center">
                       <FileTextIcon className="h-4 w-4 mr-1" /> 
-                      {/* This would be actual count */} 
-                      {Math.floor(Math.random() * 50) + 5} questions
+                      {questionCounts[bank.id] || 0} questions
                     </span>
                     <span className="flex items-center">
                       <BookmarkIcon className="h-4 w-4 mr-1" /> 
@@ -194,7 +272,7 @@ export default function QuestionBanksList() {
                         Delete
                       </DropdownMenuItem>
                       {bank.status === 'published' && (
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handlePublish(bank.id, 'draft')}>
                           Unpublish
                         </DropdownMenuItem>
                       )}
