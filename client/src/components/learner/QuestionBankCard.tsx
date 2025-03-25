@@ -8,7 +8,7 @@ interface QuestionBankCardProps {
   title: string;
   creatorName: string;
   questionCount: number;
-  updatedAt: Date;
+  updatedAt: Date | string;
   onClick?: () => void;
 }
 
@@ -21,36 +21,49 @@ export default function QuestionBankCard({
   onClick
 }: QuestionBankCardProps) {
   // Format the updatedAt date
-  const formatTimeAgo = (date: Date) => {
-    const now = new Date();
-    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-    
-    if (diffInSeconds < 60) {
-      return 'just now';
+  const formatTimeAgo = (dateInput: Date | string) => {
+    try {
+      // Convert string to Date if necessary
+      const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return 'recently';
+      }
+      
+      const now = new Date();
+      const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+      
+      if (diffInSeconds < 60) {
+        return 'just now';
+      }
+      
+      const diffInMinutes = Math.floor(diffInSeconds / 60);
+      if (diffInMinutes < 60) {
+        return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`;
+      }
+      
+      const diffInHours = Math.floor(diffInMinutes / 60);
+      if (diffInHours < 24) {
+        return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+      }
+      
+      const diffInDays = Math.floor(diffInHours / 24);
+      if (diffInDays < 7) {
+        return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+      }
+      
+      const diffInWeeks = Math.floor(diffInDays / 7);
+      if (diffInWeeks < 4) {
+        return `${diffInWeeks} week${diffInWeeks > 1 ? 's' : ''} ago`;
+      }
+      
+      const diffInMonths = Math.floor(diffInDays / 30);
+      return `${diffInMonths} month${diffInMonths > 1 ? 's' : ''} ago`;
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'recently';
     }
-    
-    const diffInMinutes = Math.floor(diffInSeconds / 60);
-    if (diffInMinutes < 60) {
-      return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`;
-    }
-    
-    const diffInHours = Math.floor(diffInMinutes / 60);
-    if (diffInHours < 24) {
-      return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
-    }
-    
-    const diffInDays = Math.floor(diffInHours / 24);
-    if (diffInDays < 7) {
-      return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
-    }
-    
-    const diffInWeeks = Math.floor(diffInDays / 7);
-    if (diffInWeeks < 4) {
-      return `${diffInWeeks} week${diffInWeeks > 1 ? 's' : ''} ago`;
-    }
-    
-    const diffInMonths = Math.floor(diffInDays / 30);
-    return `${diffInMonths} month${diffInMonths > 1 ? 's' : ''} ago`;
   };
   
   const timeAgo = formatTimeAgo(updatedAt);
@@ -63,7 +76,7 @@ export default function QuestionBankCard({
       <CardContent className="p-6">
         <div className="flex justify-between items-start mb-4">
           <h3 className="text-lg font-semibold">{title}</h3>
-          <Badge variant="primary" className="bg-primary-100 text-primary-800">
+          <Badge variant="secondary" className="bg-primary-100 text-primary-800">
             {questionCount} Questions
           </Badge>
         </div>

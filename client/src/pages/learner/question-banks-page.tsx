@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/layouts/Header";
@@ -8,11 +8,43 @@ import { QuestionBank } from "@shared/schema";
 
 export default function QuestionBanksPage() {
   const [_, setLocation] = useLocation();
+  const [questionCounts, setQuestionCounts] = useState<{[key: number]: number}>({});
   
   // Fetch published question banks
   const { data: questionBanks, isLoading, error } = useQuery<QuestionBank[]>({
     queryKey: ["/api/question-banks"],
   });
+  
+  // Fetch question counts for each bank
+  useEffect(() => {
+    if (questionBanks && questionBanks.length > 0) {
+      const fetchQuestionCount = async (bankId: number) => {
+        try {
+          const response = await fetch(`/api/question-banks/${bankId}/questions`);
+          if (!response.ok) return 0;
+          const questions = await response.json();
+          return { bankId, count: questions.length };
+        } catch (error) {
+          console.error(`Error fetching questions for bank ${bankId}:`, error);
+          return { bankId, count: 0 };
+        }
+      };
+
+      // Create promises for all question banks
+      const promises = questionBanks.map(bank => fetchQuestionCount(bank.id));
+      
+      // Execute all promises and update the counts
+      Promise.all(promises).then(results => {
+        const counts: {[key: number]: number} = {};
+        results.forEach(result => {
+          if (result && typeof result === 'object' && 'bankId' in result) {
+            counts[result.bankId] = result.count;
+          }
+        });
+        setQuestionCounts(counts);
+      });
+    }
+  }, [questionBanks]);
   
   const handleQuestionBankClick = (id: number) => {
     setLocation(`/learner/question-bank/${id}`);
@@ -55,8 +87,8 @@ export default function QuestionBanksPage() {
                     id={bank.id}
                     title={bank.title}
                     creatorName="Creator" // This would be actual creator name
-                    questionCount={10} // This would be actual question count
-                    updatedAt={bank.updatedAt}
+                    questionCount={questionCounts[bank.id] || 0}
+                    updatedAt={bank.updatedAt || ''}
                     onClick={() => handleQuestionBankClick(bank.id)}
                   />
                 ))}
