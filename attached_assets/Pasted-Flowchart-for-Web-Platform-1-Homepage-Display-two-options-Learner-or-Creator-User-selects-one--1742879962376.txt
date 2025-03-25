@@ -1,0 +1,77 @@
+Flowchart for Web Platform
+1. Homepage
+• Display two options: Learner or Creator
+• User selects one option:
+o Learner → Redirects to Learner Flow
+o Creator → Redirects to Creator Login Page
+ 
+2. Creator Flow
+Login Page
+• Option to create an account or log in
+• After login, redirect to Question Bank Dashboard
+Question Bank Dashboard
+• Dashboard Options:
+1. Select "GATE-AR"
+2. Enter details:
+▪ Company/Organization Name
+▪ Brief Introduction
+▪ Question Bank Title
+3. Continue to Question Bank Creation Page
+Question Bank Creation Page
+• Enter:
+1. Paper/Exam/Test Name (Dropdown with saved options)
+2. Paper/Exam/Test Year (YYYY format)
+3. Subject (Dropdown with saved options)
+4. Question
+5. Options (4 sub-rows or "No Option")
+6. Correct Answer (Mandatory)
+7. Description (Optional, max 2000 words, 8 images of 1MB each)
+• Buttons:
+o Add: Save current question and add another
+o Save: Save progress
+o Publish: Publish to Learner’s Page
+Dashboard Features
+• View saved and published question banks
+• Edit any saved questions
+• Filter options:
+o Serial No.
+o Subject
+o Exam Name
+o Exam Year
+o Keywords
+• Pagination (25 questions per page, or all on one page)
+• Admin controls (Edit/Delete/Publish/Unpublish)
+• Auto Serial Numbering
+ 
+ 
+ 
+3. Learner Flow
+Learner Page
+• Select "GATE-AR"
+• Display list of published Question Banks (Title & Creator Name)
+• Select a Question Bank → Redirects to Filter Page
+Filtering Options
+1. Exam Name & Year Wise
+o Sorted in ascending order (e.g., "GATE AR 2017", "HPSC 2019")
+2. Subject Wise
+o Sorted alphabetically (e.g., "Building Services", "Structures")
+3. Serial No. Wise
+o Questions displayed in the same order as entered by the creator
+Viewing Questions
+• 25 questions per page with pagination
+• Format displayed:
+1. Paper/Exam/Test Name
+2. Paper/Exam/Test Year
+3. Subject
+4. Question
+5. Options
+6. Correct Answer (Hidden under dropdown)
+7. Description (Hidden under dropdown)
+• Dropdown for Correct Answer & Description (prevents direct answer viewing)
+ 
+4. Admin Controls
+• View all created question banks
+• Edit/Delete/Publish/Unpublish any question bank
+• Manage user accounts
+This flowchart outlines the complete structure and functionality of the "Brackets" web platform, ensuring a smooth experience for both creators and learners.
+ 
