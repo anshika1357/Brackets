@@ -1,9 +1,11 @@
 import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PencilLine, User } from "lucide-react";
+import { PencilLine, User, ShieldCheck } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function HomeHero() {
+  const { user } = useAuth();
   return (
     <section className="container mx-auto px-4 py-16 md:py-24">
       <div className="max-w-3xl mx-auto text-center">
@@ -40,10 +42,30 @@ export default function HomeHero() {
                 Create, manage and publish question banks for your students or audience
               </p>
               <Button className="w-full" variant="secondary" asChild>
-                <Link href="/auth">Continue as Creator</Link>
+                <Link href={user ? "/creator/dashboard" : "/auth"}>
+                  {user ? "Go to Dashboard" : "Continue as Creator"}
+                </Link>
               </Button>
             </CardContent>
           </Card>
+          
+          {/* Admin Card - Only visible to admin users */}
+          {user && user.role === 'admin' && (
+            <Card className="hover:border-purple-400 cursor-pointer md:col-span-2 max-w-md mx-auto">
+              <CardContent className="p-8">
+                <div className="h-16 w-16 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <ShieldCheck className="h-8 w-8" />
+                </div>
+                <h3 className="text-xl font-semibold mb-3">Admin Dashboard</h3>
+                <p className="text-neutral-600 mb-6">
+                  Manage platform content, users, and approve question banks
+                </p>
+                <Button className="w-full" variant="outline" asChild>
+                  <Link href="/admin/dashboard">Access Admin Dashboard</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </section>

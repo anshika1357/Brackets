@@ -10,6 +10,8 @@ import DashboardPage from "@/pages/creator/dashboard-page";
 import QuestionBankPage from "@/pages/creator/question-bank-page";
 import QuestionBanksPage from "@/pages/learner/question-banks-page";
 import QuestionBankDetailPage from "@/pages/learner/question-bank-detail-page";
+import AdminDashboardPage from "@/pages/admin/dashboard";
+import PendingApprovalsPage from "@/pages/admin/pending-approvals";
 import { AuthProvider } from "./hooks/use-auth";
 
 function Router() {
@@ -22,6 +24,8 @@ function Router() {
       <ProtectedRoute path="/creator/question-bank/new" component={QuestionBankPage} />
       <Route path="/learner/question-banks" component={QuestionBanksPage} />
       <Route path="/learner/question-bank/:id" component={QuestionBankDetailPage} />
+      <ProtectedRoute path="/admin/dashboard" component={AdminDashboardPage} />
+      <ProtectedRoute path="/admin/pending-approvals" component={PendingApprovalsPage} />
       <Route component={NotFound} />
     </Switch>
   );
