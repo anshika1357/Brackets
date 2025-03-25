@@ -21,9 +21,12 @@ export default function QuestionBanksPage() {
       const fetchQuestionCount = async (bankId: number) => {
         try {
           const response = await fetch(`/api/question-banks/${bankId}/questions`);
-          if (!response.ok) return 0;
+          if (!response.ok) {
+            console.warn(`Failed to fetch questions for bank ${bankId}: ${response.status}`);
+            return { bankId, count: 0 };
+          }
           const questions = await response.json();
-          return { bankId, count: questions.length };
+          return { bankId, count: Array.isArray(questions) ? questions.length : 0 };
         } catch (error) {
           console.error(`Error fetching questions for bank ${bankId}:`, error);
           return { bankId, count: 0 };
@@ -34,15 +37,19 @@ export default function QuestionBanksPage() {
       const promises = questionBanks.map(bank => fetchQuestionCount(bank.id));
       
       // Execute all promises and update the counts
-      Promise.all(promises).then(results => {
-        const counts: {[key: number]: number} = {};
-        results.forEach(result => {
-          if (result && typeof result === 'object' && 'bankId' in result) {
-            counts[result.bankId] = result.count;
-          }
+      Promise.all(promises)
+        .then(results => {
+          const counts: {[key: number]: number} = {};
+          results.forEach(result => {
+            if (result && typeof result === 'object' && 'bankId' in result) {
+              counts[result.bankId] = result.count;
+            }
+          });
+          setQuestionCounts(counts);
+        })
+        .catch(error => {
+          console.error("Error fetching question counts:", error);
         });
-        setQuestionCounts(counts);
-      });
     }
   }, [questionBanks]);
   
@@ -88,7 +95,7 @@ export default function QuestionBanksPage() {
                     title={bank.title}
                     creatorName="Creator" // This would be actual creator name
                     questionCount={questionCounts[bank.id] || 0}
-                    updatedAt={bank.updatedAt || ''}
+                    updatedAt={bank.updatedAt ? new Date(bank.updatedAt) : new Date()}
                     onClick={() => handleQuestionBankClick(bank.id)}
                   />
                 ))}
