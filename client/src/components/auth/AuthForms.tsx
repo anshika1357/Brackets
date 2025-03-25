@@ -51,16 +51,24 @@ export default function AuthForms() {
 
   const onLoginSubmit = (data: LoginUser) => {
     loginMutation.mutate(data, {
-      onSuccess: () => {
-        setLocation("/creator/dashboard");
+      onSuccess: (user) => {
+        if (user.role === 'admin') {
+          setLocation("/admin/dashboard");
+        } else {
+          setLocation("/creator/dashboard");
+        }
       },
     });
   };
 
   const onRegisterSubmit = (data: RegisterUser) => {
     registerMutation.mutate(data, {
-      onSuccess: () => {
-        setLocation("/creator/dashboard");
+      onSuccess: (user) => {
+        if (user.role === 'admin') {
+          setLocation("/admin/dashboard");
+        } else {
+          setLocation("/creator/dashboard");
+        }
       },
     });
   };
