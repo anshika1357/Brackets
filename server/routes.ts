@@ -59,11 +59,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Question Bank routes
-  // Get all question banks (for learners - only published ones)
-  app.get("/api/question-banks", async (_req, res) => {
+  // Get question banks (for learners - only published ones)
+  app.get("/api/question-banks", async (req, res) => {
     const questionBanks = await storage.getQuestionBanks();
-    const publishedBanks = questionBanks.filter(bank => bank.status === 'published');
-    res.json(publishedBanks);
+    
+    // Filter to only return published banks for non-authenticated users
+    if (!req.isAuthenticated()) {
+      const publishedBanks = questionBanks.filter(bank => bank.status === 'published');
+      return res.json(publishedBanks);
+    }
+    
+    // For authenticated users that are not admins, show published and their own drafts/pending
+    if (req.user && req.user.role !== 'admin') {
+      const visibleBanks = questionBanks.filter(bank => 
+        bank.status === 'published' || bank.creatorId === req.user.id);
+      return res.json(visibleBanks);
+    }
+    
+    // Admins can see everything
+    res.json(questionBanks);
   });
 
   // Get creator's question banks
@@ -85,15 +99,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(404).json({ error: "Question bank not found" });
     }
     
-    // If user not authenticated and bank is draft, don't show
-    if (questionBank.status === 'draft' && !req.isAuthenticated()) {
-      return res.status(404).json({ error: "Question bank not found" });
+    // If user not authenticated, only show published banks
+    if (!req.isAuthenticated()) {
+      if (questionBank.status !== 'published') {
+        return res.status(404).json({ error: "Question bank not found" });
+      }
     }
     
-    // If user is authenticated but not the creator or admin, don't show draft banks
-    if (questionBank.status === 'draft' && req.user && 
-        req.user.id !== questionBank.creatorId && req.user.role !== 'admin') {
-      return res.status(404).json({ error: "Question bank not found" });
+    // If user is authenticated but not the creator or admin
+    if (req.user && req.user.id !== questionBank.creatorId && req.user.role !== 'admin') {
+      // Only show published banks to regular users
+      if (questionBank.status !== 'published') {
+        return res.status(404).json({ error: "Question bank not found" });
+      }
     }
     
     res.json(questionBank);
@@ -142,6 +160,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const validatedData = insertQuestionBankSchema.partial().parse(req.body);
+      
+      // Handle publishing workflow
+      if (validatedData.status === 'published') {
+        // Only admins can directly publish
+        if (req.user.role === 'admin') {
+          // Admin can publish directly
+          const updatedBank = await storage.updateQuestionBank(id, validatedData);
+          return res.json(updatedBank);
+        } else {
+          // Creators can only request approval
+          const updatedBank = await storage.updateQuestionBank(id, {
+            ...validatedData,
+            status: 'pending_approval'
+          });
+          return res.json(updatedBank);
+        }
+      }
+      
+      // Admin approving a pending question bank
+      if (req.user.role === 'admin' && 
+          questionBank.status === 'pending_approval' && 
+          validatedData.status === 'pending_approval') {
+        const updatedBank = await storage.updateQuestionBank(id, {
+          ...validatedData,
+          status: 'published'
+        });
+        return res.json(updatedBank);
+      }
+      
+      // Handle other updates
       const updatedBank = await storage.updateQuestionBank(id, validatedData);
       res.json(updatedBank);
     } catch (error) {

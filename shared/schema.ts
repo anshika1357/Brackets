@@ -4,7 +4,7 @@ import { z } from "zod";
 
 // Enums
 export const userRoleEnum = pgEnum('user_role', ['creator', 'admin']);
-export const questionBankStatusEnum = pgEnum('question_bank_status', ['draft', 'published']);
+export const questionBankStatusEnum = pgEnum('question_bank_status', ['draft', 'pending_approval', 'published']);
 
 // Users table
 export const users = pgTable('users', {
