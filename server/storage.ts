@@ -1,8 +1,15 @@
 import { users, type User, type InsertUser, questionBanks, type QuestionBank, type InsertQuestionBank, 
   subjects, type Subject, type InsertSubject, exams, type Exam, type InsertExam, 
   questions, type Question, type InsertQuestion } from "@shared/schema";
+import { db } from "./db";
+import { eq, and } from "drizzle-orm";
+import session from "express-session";
+import connectPg from "connect-pg-simple";
+import { pool } from "./db";
 
 export interface IStorage {
+  // Session store for auth
+  sessionStore: session.SessionStore;
   // User methods
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
@@ -206,4 +213,157 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Database implementation of IStorage
+export class DatabaseStorage implements IStorage {
+  public sessionStore: session.SessionStore;
+
+  constructor() {
+    const PostgresSessionStore = connectPg(session);
+    this.sessionStore = new PostgresSessionStore({
+      pool,
+      createTableIfMissing: true,
+    });
+  }
+
+  // User methods
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db.insert(users).values(insertUser).returning();
+    return user;
+  }
+
+  // Question Bank methods
+  async getQuestionBanks(): Promise<QuestionBank[]> {
+    return await db.select().from(questionBanks);
+  }
+
+  async getQuestionBanksByCreator(creatorId: number): Promise<QuestionBank[]> {
+    return await db.select()
+      .from(questionBanks)
+      .where(eq(questionBanks.creatorId, creatorId));
+  }
+
+  async getQuestionBank(id: number): Promise<QuestionBank | undefined> {
+    const [bank] = await db.select()
+      .from(questionBanks)
+      .where(eq(questionBanks.id, id));
+    return bank;
+  }
+
+  async createQuestionBank(bank: InsertQuestionBank): Promise<QuestionBank> {
+    const now = new Date();
+    const [questionBank] = await db.insert(questionBanks)
+      .values({
+        ...bank,
+        createdAt: now,
+        updatedAt: now
+      })
+      .returning();
+    return questionBank;
+  }
+
+  async updateQuestionBank(id: number, bank: Partial<InsertQuestionBank>): Promise<QuestionBank | undefined> {
+    const [updatedBank] = await db.update(questionBanks)
+      .set({
+        ...bank,
+        updatedAt: new Date()
+      })
+      .where(eq(questionBanks.id, id))
+      .returning();
+    return updatedBank;
+  }
+
+  async deleteQuestionBank(id: number): Promise<boolean> {
+    const result = await db.delete(questionBanks)
+      .where(eq(questionBanks.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Subject methods
+  async getSubjects(): Promise<Subject[]> {
+    return await db.select().from(subjects);
+  }
+
+  async createSubject(subject: InsertSubject): Promise<Subject> {
+    // Check if subject with same name already exists
+    const [existing] = await db.select()
+      .from(subjects)
+      .where(eq(subjects.name, subject.name));
+    
+    if (existing) return existing;
+    
+    const [newSubject] = await db.insert(subjects)
+      .values(subject)
+      .returning();
+    return newSubject;
+  }
+
+  // Exam methods
+  async getExams(): Promise<Exam[]> {
+    return await db.select().from(exams);
+  }
+
+  async createExam(exam: InsertExam): Promise<Exam> {
+    // Check if exam with same name already exists
+    const [existing] = await db.select()
+      .from(exams)
+      .where(eq(exams.name, exam.name));
+    
+    if (existing) return existing;
+    
+    const [newExam] = await db.insert(exams)
+      .values(exam)
+      .returning();
+    return newExam;
+  }
+
+  // Question methods
+  async getQuestions(questionBankId: number): Promise<Question[]> {
+    return await db.select()
+      .from(questions)
+      .where(eq(questions.questionBankId, questionBankId))
+      .orderBy(questions.serialNumber);
+  }
+
+  async getQuestion(id: number): Promise<Question | undefined> {
+    const [question] = await db.select()
+      .from(questions)
+      .where(eq(questions.id, id));
+    return question;
+  }
+
+  async createQuestion(question: InsertQuestion): Promise<Question> {
+    const [newQuestion] = await db.insert(questions)
+      .values(question)
+      .returning();
+    return newQuestion;
+  }
+
+  async updateQuestion(id: number, question: Partial<InsertQuestion>): Promise<Question | undefined> {
+    const [updatedQuestion] = await db.update(questions)
+      .set(question)
+      .where(eq(questions.id, id))
+      .returning();
+    return updatedQuestion;
+  }
+
+  async deleteQuestion(id: number): Promise<boolean> {
+    const result = await db.delete(questions)
+      .where(eq(questions.id, id))
+      .returning();
+    return result.length > 0;
+  }
+}
+
+// Initialize storage with database implementation
+export const storage = new DatabaseStorage();
